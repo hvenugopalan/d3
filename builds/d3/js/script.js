@@ -10,6 +10,15 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
   var select = d3.select("#viz2_select_category")
   let selectedCategory = "";
 
+  mod_data = {};
+  data.forEach(d => {
+    if (d.Asin in mod_data) {
+      mod_data[d.Asin].review_count += 1;
+    }
+    else {
+      mod_data[d.Asin] = { description: d.Description, price: parseFloat(d.Price), review_count: 1, category: d.Category, overall: parseFloat(d.Overall) }
+    }
+  });
 
   select.selectAll("option")
     .data(categories)
@@ -19,13 +28,13 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
     .attr("value", function (d) { return d; });
 
   // setup x 
-  var xValue = function (d) { return d.Price; }, // data -> value
+  var xValue = function (d) { return d.price; }, // data -> value
     xScale = d3.scaleLinear().range([0, width]), // value -> display
     xMap = function (d) { return xScale(xValue(d)); }, // data -> display
     xAxis = d3.axisBottom().scale(xScale);
 
   // setup y
-  var yValue = function (d) { return d.Overall; }, // data -> value
+  var yValue = function (d) { return d.review_count; }, // data -> value
     yScale = d3.scaleLinear().range([height, 0]), // value -> display
     yMap = function (d) { return yScale(yValue(d)); }, // data -> display
     yAxis = d3.axisLeft().scale(yScale);
@@ -42,9 +51,13 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
     .attr("class", "tooltip")
     .style("opacity", 0);
 
-  // don't want dots overlapping axis, so add in buffer to data domain
-  xScale.domain([d3.min(data, xValue) - 1, d3.max(data, xValue) + 1]);
-  yScale.domain([0, 5]);
+
+
+  // setup fill color
+  var cValue = function (d) { return d.overall; },
+    color = d3.scaleOrdinal(d3.schemeCategory10);
+
+
 
 
 
@@ -53,7 +66,16 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
     .on("change", function (c) {
       var value = d3.select(this).property("value");
       selectedCategory = value;
-      filtered_data = data.filter((d) => d["Category"].localeCompare(selectedCategory) == 0);
+      filtered_data = Object.fromEntries(Object.entries(mod_data).filter(([k, v]) => v.category.localeCompare(selectedCategory) == 0));
+      filtered_data = Object.keys(filtered_data).map(function (key) {
+        return filtered_data[key];
+      });
+      console.log(filtered_data);
+
+      // don't want dots overlapping axis, so add in buffer to data domain
+      xScale.domain([d3.min(filtered_data, xValue) - 1, d3.max(filtered_data, xValue) + 1]);
+      yScale.domain([d3.min(filtered_data, yValue) - 1, d3.max(filtered_data, yValue) + 1]);
+      //filtered_data = Array.from(mod_data).filter((d) => d.category.localeCompare(selectedCategory) == 0);
       svg.selectAll("*").remove();
       // x-axis
       svg.append("g")
@@ -89,19 +111,54 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         .attr("x", 0 - (height / 2))
         .attr("dy", "1em")
         .style("text-anchor", "middle")
-        .text("Overall Rating");
+        .text("Number of reviews");
+
+        function updateChart() {
+
+          extent = d3.event.selection
+      
+          // If no selection, back to initial coordinate. Otherwise, update X axis domain
+          if(!extent){
+            if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
+            xAxis.domain([ 4,8])
+          }else{
+            xAxis.domain([ xAxis.invert(extent[0]), xAxis.invert(extent[1]) ])
+            scatter.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
+          }
+      
+          // Update axis and circle position
+          xAxis.transition().duration(1000).call(d3.axisBottom(xAxis))
+          scatter
+            .selectAll("circle")
+            .transition().duration(1000)
+            .attr("cx", function (d) { return xAxis(d.price); } )
+            .attr("cy", function (d) { return yAxis(d.review_count); } )
+      
+          }
+
+      // create the d3-brush generator
+      const brush = d3.brush()
+        .extent([[0, 0], [width, height]])
+        .on('brush end', updateChart);
+
+      // attach the brush to the chart
+      const gBrush = svg.append("g")
+        .attr('class', 'brush')
+        .call(brush);
+
+
       svg.selectAll("dot")
         .data(filtered_data)
         .enter().append("circle")
         .attr("r", 3.0)
         .attr("cx", xMap)
         .attr("cy", yMap)
-        .style("fill", "#69b3a2")
+        .style("fill", function (d) { return color(cValue(d)); })
         .on("mouseover", function (d) {
           tooltip.transition()
             .duration(200)
             .style("opacity", .9);
-          tooltip.html(d.Description + "<br/> (" + xValue(d)
+          tooltip.html(d.description + "<br/> (" + xValue(d)
             + ", " + yValue(d) + ")")
             .style("left", (d3.event.pageX + 5) + "px")
             .style("top", (d3.event.pageY - 28) + "px");
@@ -111,6 +168,28 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
             .duration(500)
             .style("opacity", 0);
         });
+
+      // draw legend
+      var legend = svg.selectAll(".legend")
+        .data(color.domain())
+        .enter().append("g")
+        .attr("class", "legend")
+        .attr("transform", function (d, i) { return "translate(0," + i * 20 + ")"; });
+
+      // draw legend colored rectangles
+      legend.append("rect")
+        .attr("x", width - 18)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", color);
+
+      // draw legend text
+      legend.append("text")
+        .attr("x", width - 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "end")
+        .text(function (d) { return d; })
     });
 
 
