@@ -1,121 +1,123 @@
-d3.json('js/data/forecast.json', function(d) {
+d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
 
-  var temperatures = [],
-      dates = [],
-      margin = { top: 0, right: 0, bottom: 30, left: 20 }
-      height = 400 - margin.top - margin.bottom,
-      width = 600 - margin.left - margin.right;
 
-  var   tempColor,
-        yScale,
-        yAxisValues,
-        yAxisTicks,
-        yGuide,
-        xScale,
-        xAxisValues,
-        xAxisTicks,
-        xGuide,
-        colors,
-        tooltip,
-        myChart;
+  var margin = { top: 20, right: 20, bottom: 30, left: 40 },
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
 
-  for (var i = 0; i<d.list.length; i++) {
-    temperatures.push(d.list[i].main.temp);
-    dates.push( new Date(d.list[i].dt_txt) );
-  }
+  let categories = d3.map(data, function (d) { return d.Category; }).keys();
+  categories.sort();
+  var select = d3.select("#viz2_select_category")
+  let selectedCategory = "";
 
-  yScale = d3.scaleLinear()
-    .domain([0, d3.max(temperatures)])
-    .range([0,height]);
 
-  yAxisValues = d3.scaleLinear()
-    .domain([0, d3.max(temperatures)])
-    .range([height,0]);
+  select.selectAll("option")
+    .data(categories)
+    .enter()
+    .append("option")
+    .text(function (d) { return d; })
+    .attr("value", function (d) { return d; });
 
-  yAxisTicks = d3.axisLeft(yAxisValues)
-  .ticks(10)
+  // setup x 
+  var xValue = function (d) { return d.Price; }, // data -> value
+    xScale = d3.scaleLinear().range([0, width]), // value -> display
+    xMap = function (d) { return xScale(xValue(d)); }, // data -> display
+    xAxis = d3.axisBottom().scale(xScale);
 
-  xScale = d3.scaleBand()
-    .domain(temperatures)
-    .paddingInner(.1)
-    .paddingOuter(.1)
-    .range([0, width])
+  // setup y
+  var yValue = function (d) { return d.Overall; }, // data -> value
+    yScale = d3.scaleLinear().range([height, 0]), // value -> display
+    yMap = function (d) { return yScale(yValue(d)); }, // data -> display
+    yAxis = d3.axisLeft().scale(yScale);
 
-  xAxisValues = d3.scaleTime()
-    .domain([dates[0],dates[(dates.length-1)]])
-    .range([0, width])
+  // add the graph canvas to the body of the webpage
+  var svg = d3.select("#viz").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  xAxisTicks = d3.axisBottom(xAxisValues)
-    .ticks(d3.timeDay.every(1))
+  // add the tooltip area to the webpage
+  var tooltip = d3.select("#viz").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
 
-  colors = d3.scaleLinear()
-    .domain([0, 65, d3.max(temperatures)])
-    .range(['#FFFFFF', '#2D8BCF', '#DA3637'])
+  // don't want dots overlapping axis, so add in buffer to data domain
+  xScale.domain([d3.min(data, xValue) - 1, d3.max(data, xValue) + 1]);
+  yScale.domain([0, 5]);
 
-  tooltip = d3.select('body')
-    .append('div')
-    .style('position', 'absolute')
-    .style('padding', '0 10px')
-    .style('background', 'white')
-    .style('opacity', 0);
 
-  myChart = d3.select('#viz').append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform',
-      'translate(' + margin.left + ',' + margin.right + ')')
-    .selectAll('rect').data(temperatures)
-    .enter().append('rect')
-      .attr('fill', colors)
-      .attr('width', function(d) {
-        return xScale.bandwidth();
-      })
-      .attr('height', 0)
-      .attr('x', function(d) {
-        return xScale(d);
-      })
-      .attr('y', height)
-      
-      .on('mouseover', function(d) {
-        tooltip.transition().duration(200)
-          .style('opacity', .9)
-        tooltip.html(
-          '<div style="font-size: 2rem; font-weight: bold">' +
-            d + '&deg;</div>'
-        )
-          .style('left', (d3.event.pageX -35) + 'px')
-          .style('top', (d3.event.pageY -30) + 'px')
-        tempColor = this.style.fill;
-        d3.select(this)
-          .style('fill', 'yellow')
-      })
 
-      .on('mouseout', function(d) {
-        tooltip.html('')
-        d3.select(this)
-          .style('fill', tempColor)
-      });
+  // draw dots
+  select
+    .on("change", function (c) {
+      var value = d3.select(this).property("value");
+      selectedCategory = value;
+      filtered_data = data.filter((d) => d["Category"].localeCompare(selectedCategory) == 0);
+      svg.selectAll("*").remove();
+      // x-axis
+      svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", -6)
+        .style("text-anchor", "end");
 
-  yGuide = d3.select('#viz svg').append('g')
-            .attr('transform', 'translate(20,0)')
-            .call(yAxisTicks)
+      // y-axis
+      svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+        .append("text")
+        .attr("class", "label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end");
 
-  xGuide = d3.select('#viz svg').append('g')
-            .attr('transform', 'translate(20,'+ height + ')')
-            .call(xAxisTicks)
+      svg.append("text")
+        .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.bottom) + ")")
+        .style("text-anchor", "middle")
+        .text("Price (in USD)");
 
-  myChart.transition()
-    .attr('height', function(d) {
-      return yScale(d);
-    })
-    .attr('y', function(d) {
-      return height - yScale(d);
-    })
-    .delay(function(d, i) {
-      return i * 20;
-    })
-    .duration(1000)
-    .ease(d3.easeBounceOut)
+      // text label for the y axis
+      svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 0 - margin.left)
+        .attr("x", 0 - (height / 2))
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .text("Overall Rating");
+      svg.selectAll("dot")
+        .data(filtered_data)
+        .enter().append("circle")
+        .attr("r", 3.0)
+        .attr("cx", xMap)
+        .attr("cy", yMap)
+        .style("fill", "#69b3a2")
+        .on("mouseover", function (d) {
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", .9);
+          tooltip.html(d.Description + "<br/> (" + xValue(d)
+            + ", " + yValue(d) + ")")
+            .style("left", (d3.event.pageX + 5) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+        })
+        .on("mouseout", function (d) {
+          tooltip.transition()
+            .duration(500)
+            .style("opacity", 0);
+        });
+    });
 
-}); // json import
+
+
+});
+
+
+
+
+
