@@ -1,29 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Visualization</title>
-    <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/styles.css" rel="stylesheet">
-  </head>
-  <body>
 
-    <div class="container">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visualization</title>
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+</head>
 
-      <h2>Price vs Overall rating by category</h2>
+<body>
 
-      <div id="viz"></div>
-      <div id="viz2">
-        <label>Category: </label><select id="viz2_select_category" style="width: mx-auto"></select>
-        <!-- <label>Year: </label><select id="viz2_select_year" style="width: mx-auto"></select> -->
-      </div>
+  <div class="container">
 
-    </div><!-- container -->
-    <script src="js/libraries/jquery/jquery.min.js"></script>
-    <script src="js/libraries/bootstrap/bootstrap.min.js"></script>
-    <script src="js/libraries/d3/d3.min.js"></script>
-    <script src="js/script.js"></script>
-  </body>
+    <h2>Price vs Overall rating by category</h2>
+
+    <!-- Create a div where the circle will take place -->
+    <div id="dataviz_axisZoom" style="background-color:whitesmoke"></div>
+    <div id="viz2">
+      <label>Category: </label><select id="viz2_select_category" style="width: mx-auto"></select>
+      <!-- <label>Year: </label><select id="viz2_select_year" style="width: mx-auto"></select> -->
+    </div>
+
+  </div><!-- container -->
+  <script src="js/libraries/jquery/jquery.min.js"></script>
+  <script src="js/libraries/bootstrap/bootstrap.min.js"></script>
+  <script src="//d3js.org/d3.v4.min.js">
+
+  </script>
+  
+  <!-- <script src="js/libraries/d3/d3.min.js"></script> -->
+  <script src="https://d3js.org/d3-scale-chromatic.v0.3.min.js"></script>
+  <script src="js/script.js"></script>
+</body>
+
 </html>

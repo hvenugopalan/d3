@@ -1,9 +1,33 @@
 d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
 
 
-  var margin = { top: 20, right: 20, bottom: 30, left: 40 },
+  var margin = {
+    top: 20,
+    right: 20,
+    bottom: 30,
+    left: 40
+  },
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
+
+  var x = d3.scaleLinear()
+    .range([0, width])
+    .nice();
+
+  var y = d3.scaleLinear()
+    .range([height, 0]);
+
+  var xAxis = d3.axisBottom(x),
+    yAxis = d3.axisLeft(y);
+
+  var cValue = function (d) { return d.overall; },
+    color = d3.scaleOrdinal() // D3 Version 4
+      .domain([1, 2, 3, 4, 5])
+      .range(["#d7191c",
+        "#fdae61",
+        "#ffffbf",
+        "#a6d96a",
+        "#1a9641"]);
 
   let categories = d3.map(data, function (d) { return d.Category; }).keys();
   categories.sort();
@@ -27,38 +51,14 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
     .text(function (d) { return d; })
     .attr("value", function (d) { return d; });
 
-  // setup x 
-  var xValue = function (d) { return d.price; }, // data -> value
-    xScale = d3.scaleLinear().range([0, width]), // value -> display
-    xMap = function (d) { return xScale(xValue(d)); }, // data -> display
-    xAxis = d3.axisBottom().scale(xScale);
+  var tooltip = d3.select('body').append('div')
+    .attr('id', 'tooltip');
 
-  // setup y
-  var yValue = function (d) { return d.review_count; }, // data -> value
-    yScale = d3.scaleLinear().range([height, 0]), // value -> display
-    yMap = function (d) { return yScale(yValue(d)); }, // data -> display
-    yAxis = d3.axisLeft().scale(yScale);
-
-  // add the graph canvas to the body of the webpage
-  var svg = d3.select("#viz").append("svg")
+  var svg = d3.select("#dataviz_axisZoom").append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  // add the tooltip area to the webpage
-  var tooltip = d3.select("#viz").append("div")
-    .attr("class", "tooltip")
-    .style("opacity", 0);
-
-
-
-  // setup fill color
-  var cValue = function (d) { return d.overall; },
-    color = d3.scaleOrdinal(d3.schemeCategory10);
-
-
-
 
 
   // draw dots
@@ -70,96 +70,49 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
       filtered_data = Object.keys(filtered_data).map(function (key) {
         return filtered_data[key];
       });
-      console.log(filtered_data);
 
-      // don't want dots overlapping axis, so add in buffer to data domain
-      xScale.domain([d3.min(filtered_data, xValue) - 1, d3.max(filtered_data, xValue) + 1]);
-      yScale.domain([d3.min(filtered_data, yValue) - 1, d3.max(filtered_data, yValue) + 1]);
-      //filtered_data = Array.from(mod_data).filter((d) => d.category.localeCompare(selectedCategory) == 0);
-      svg.selectAll("*").remove();
-      // x-axis
-      svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
-        .call(xAxis)
-        .append("text")
-        .attr("class", "label")
-        .attr("x", width)
-        .attr("y", -6)
-        .style("text-anchor", "end");
+     svg.selectAll("*").remove();
+      var brush = d3.brush().extent([
+        [0, 0],
+        [width, height]
+      ]).on("end", brushended),
+        idleTimeout,
+        idleDelay = 350;
 
-      // y-axis
-      svg.append("g")
-        .attr("class", "y axis")
-        .call(yAxis)
-        .append("text")
-        .attr("class", "label")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end");
 
-      svg.append("text")
-        .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.bottom) + ")")
-        .style("text-anchor", "middle")
-        .text("Price (in USD)");
+      x.domain(d3.extent(filtered_data, function (d) {
+        return d.price;
+      })).nice();
+      y.domain(d3.extent(filtered_data, function (d) {
+        return d.review_count;
+      })).nice();
 
-      // text label for the y axis
-      svg.append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 0 - margin.left)
-        .attr("x", 0 - (height / 2))
-        .attr("dy", "1em")
-        .style("text-anchor", "middle")
-        .text("Number of reviews");
+      var scatter = svg.append("g")
+        .attr("id", "scatterplot")
+        .attr("clip-path", "url(#clip)");
 
-        function updateChart() {
-
-          extent = d3.event.selection
-      
-          // If no selection, back to initial coordinate. Otherwise, update X axis domain
-          if(!extent){
-            if (!idleTimeout) return idleTimeout = setTimeout(idled, 350); // This allows to wait a little bit
-            xAxis.domain([ 4,8])
-          }else{
-            xAxis.domain([ xAxis.invert(extent[0]), xAxis.invert(extent[1]) ])
-            scatter.select(".brush").call(brush.move, null) // This remove the grey brush area as soon as the selection has been done
-          }
-      
-          // Update axis and circle position
-          xAxis.transition().duration(1000).call(d3.axisBottom(xAxis))
-          scatter
-            .selectAll("circle")
-            .transition().duration(1000)
-            .attr("cx", function (d) { return xAxis(d.price); } )
-            .attr("cy", function (d) { return yAxis(d.review_count); } )
-      
-          }
-
-      // create the d3-brush generator
-      const brush = d3.brush()
-        .extent([[0, 0], [width, height]])
-        .on('brush end', updateChart);
-
-      // attach the brush to the chart
-      const gBrush = svg.append("g")
-        .attr('class', 'brush')
+      scatter.append("g")
+        .attr("class", "brush")
         .call(brush);
 
-
-      svg.selectAll("dot")
+      scatter
+        .selectAll("circle")
         .data(filtered_data)
-        .enter().append("circle")
-        .attr("r", 3.0)
-        .attr("cx", xMap)
-        .attr("cy", yMap)
+        .enter()
+        .append("circle")
+        .attr("cx", function (d) { return x(d.price); })
+        .attr("cy", function (d) { return y(d.review_count); })
+        .attr("r", 8)
         .style("fill", function (d) { return color(cValue(d)); })
+        .style("opacity", 0.5)
         .on("mouseover", function (d) {
           tooltip.transition()
             .duration(200)
             .style("opacity", .9);
-          tooltip.html(d.description + "<br/> (" + xValue(d)
-            + ", " + yValue(d) + ")")
+          tooltip.html("Description: " + d.description+  "<br/>" +
+          "Price: " + d.price + "<br/>" + 
+          "Overall rating: " + d.overall + "<br/>" +
+          "No. of reviews: " + d.review_count)
             .style("left", (d3.event.pageX + 5) + "px")
             .style("top", (d3.event.pageY - 28) + "px");
         })
@@ -168,6 +121,32 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
             .duration(500)
             .style("opacity", 0);
         });
+
+      // x axis
+      svg.append("g")
+        .attr("class", "x axis")
+        .attr('id', "axis--x")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+      svg.append("text")
+        .style("text-anchor", "end")
+        .attr("x", width)
+        .attr("y", height - 8)
+        .text("Price");
+
+      // y axis
+      svg.append("g")
+        .attr("class", "y axis")
+        .attr('id', "axis--y")
+        .call(yAxis);
+
+      svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", "1em")
+        .style("text-anchor", "end")
+        .text("Number of reviews");
 
       // draw legend
       var legend = svg.selectAll(".legend")
@@ -181,6 +160,7 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         .attr("x", width - 18)
         .attr("width", 18)
         .attr("height", 18)
+        .style("opacity", 0.5)
         .style("fill", color);
 
       // draw legend text
@@ -189,7 +169,49 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         .attr("y", 9)
         .attr("dy", ".35em")
         .style("text-anchor", "end")
-        .text(function (d) { return d; })
+        .text(function (d) { return d; });
+
+
+      function brushended() {
+
+        var s = d3.event.selection;
+        if (!s) {
+          if (!idleTimeout) return idleTimeout = setTimeout(idled, idleDelay);
+          x.domain(d3.extent(filtered_data, function (d) {
+            return d.price;
+          })).nice();
+          y.domain(d3.extent(filtered_data, function (d) {
+            return d.review_count;
+          })).nice();
+        } else {
+
+          x.domain([s[0][0], s[1][0]].map(x.invert, x));
+          y.domain([s[1][1], s[0][1]].map(y.invert, y));
+          scatter.select(".brush").call(brush.move, null);
+        }
+        zoom();
+      }
+
+      function idled() {
+        idleTimeout = null;
+      }
+
+      function zoom() {
+
+        var t = scatter.transition().duration(750);
+        svg.select("#axis--x").transition(t).call(xAxis);
+        svg.select("#axis--y").transition(t).call(yAxis);
+        scatter.selectAll("circle").transition(t)
+          .attr("cx", function (d) {
+            return x(d.price);
+          })
+          .attr("cy", function (d) {
+            return y(d.review_count);
+          });
+      }
+
+
+
     });
 
 
