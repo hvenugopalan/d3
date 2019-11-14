@@ -56,11 +56,6 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
     }
   });
 
-
-
-
-
-
   select.selectAll("option")
     .data(categories)
     .enter()
@@ -132,7 +127,7 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
             .style("opacity", .9);
           tooltip.html("Description: " + d.description + "<br/>" +
             "Price: " + d.price + "<br/>" +
-            "Overall rating: " + d.overall + "<br/>" +
+            "Rating: " + d.overall + "<br/>" +
             "No. of reviews: " + d.review_count)
             .style("left", (d3.event.pageX + 5) + "px")
             .style("top", (d3.event.pageY - 28) + "px");
@@ -235,6 +230,8 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
           });
       }
 
+      showViz6();
+      showViz5();
 
       //Viz3
 
@@ -290,12 +287,30 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         svg3.append("g")
           .call(d3.axisLeft(y));
 
+        // x axis
+
+
+        svg3.append("text")
+          .style("text-anchor", "end")
+          .attr("x", width3)
+          .attr("y", height3 - 8)
+          .text("Month");
+
+        // y axis
+
+
+        svg3.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", -50)
+          .attr("dy", "1em")
+          .style("text-anchor", "end")
+          .text("Number of reviews");
+
         let keys = Object.keys(bar_data);
         bar_data = []
         for (let i = 0; i < keys.length; i++) {
           bar_data.push({ key: keys[i], value: arr[i] });
         }
-        console.log(bar_data);
         // Bars
         svg3.selectAll(".bar")
           .data(bar_data)
@@ -311,11 +326,13 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
       //Viz4
 
       function showViz4(productId) {
-        var margin = { top: 20, right: 20, bottom: 90, left: 50 },
+        var margin = { top: 20, right: 100, bottom: 90, left: 50 },
           margin2 = { top: 430, right: 20, bottom: 30, left: 50 },
-          width = 960 - margin.left - margin.right,
+          width = 960,
           height = 500 - margin.top - margin.bottom,
           height2 = 500 - margin2.top - margin2.bottom;
+
+
 
         //add svg with margin !important
         //this is svg is actually group
@@ -330,9 +347,17 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
           .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
 
         bar_data = {};
+        sum_of_rating = {};
+        review_count = {};
         data.forEach((d) => {
           if (d.Asin == productId) {
-            bar_data[d.Reviewer_ID] = d.Overall;
+            bar_data[d.Reviewer_ID] = parseInt(d.Overall);
+            sum_of_rating[d.Reviewer_ID] = parseInt(d.Overall);
+            review_count[d.Reviewer_ID] = 1;
+          }
+          else if (d.Reviewer_ID in sum_of_rating) {
+            sum_of_rating[d.Reviewer_ID] += parseInt(d.Overall);
+            review_count[d.Reviewer_ID] += 1;
           }
         });
 
@@ -368,17 +393,27 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         var xScale2 = d3.scaleBand().rangeRound([0, width]).padding(0.1);//scaleBand is used for  bar chart
         xScale2.domain(d3.range(0, dataset.length, 1));
         //add x and y axis
+        focus.append("text")
+          .style("text-anchor", "end")
+          .attr("x", width + 20)
+          .attr("y", height + 10)
+          .text("Reviewer");
         var yAxis = d3.axisLeft(yScale).tickSize(-width);
         var yAxisGroup = focus.append("g").call(yAxis);
+
+        svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 6)
+          .attr("dy", "1em")
+          .style("text-anchor", "end")
+          .text("Rating for product " + productId);
+
         var xAxis = d3.axisBottom(xScale).tickSize(-height);
+
         var xAxisGroup = focus.append("g").attr("transform", "translate(0," + height + ")").call(xAxis).selectAll("text")
           .attr("transform", "translate(-10,0)rotate(-90)")
           .style("text-anchor", "end");
 
-        var xAxis2 = d3.axisBottom(xScale2);
-        var xAxisGroup2 = context.append("g").attr("transform", "translate(0," + height2 + ")").call(xAxis2).selectAll("text")
-          .attr("transform", "translate(-10,0)rotate(-90)")
-          .style("text-anchor", "end");
 
         var bars1 = focus.selectAll("rect").data(dataset).enter().append("rect");
         bars1.attr("x", function (d, i) {
@@ -392,9 +427,25 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
             return height - yScale(d.value);
           });
         bars1.attr("fill", function (d) {
-          return "steelblue";
+          return color(Math.round(sum_of_rating[d.key] / review_count[d.key]));
         });
 
+        bars1.on("mouseover", function (d) {
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", .9);
+          tooltip.html("Reviewer ID: " + d.key + "<br/>" +
+            "Rating: " + d.value + "<br/>" +
+            "Avg rating to all products: " + Math.round(sum_of_rating[d.key] / review_count[d.key]) + "<br/>" +
+            "Total no. of reviews given on Amazon:" + review_count[d.key] + "<br/>")
+            .style("left", (d3.event.pageX + 5) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+        })
+          .on("mouseout", function (d) {
+            tooltip.transition()
+              .duration(500)
+              .style("opacity", 0);
+          })
         var bars2 = context.selectAll("rect").data(dataset).enter().append("rect");
         bars2.attr("x", function (d, i) {
           return xScale2(i);//i*(width/dataset.length);
@@ -407,7 +458,7 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
             return height2 - yScale2(d.value);
           });
         bars2.attr("fill", function (d) {
-          return "steelblue";
+          return color(Math.round(sum_of_rating[d.key] / review_count[d.key]));
         });
 
         //add brush
@@ -422,6 +473,28 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
           .call(brush.move, xScale2.range());
 
 
+        // draw legend
+        var legend = focus.selectAll(".legend")
+          .data(color.domain())
+          .enter().append("g")
+          .attr("class", "legend")
+          .attr("transform", function (d, i) { return "translate(0," + i * 20 + ")"; });
+
+        // draw legend colored rectangles
+        legend.append("rect")
+          .attr("x", width - 18)
+          .attr("width", 18)
+          .attr("height", 18)
+          .style("opacity", 1)
+          .style("fill", color);
+
+        // draw legend text
+        legend.append("text")
+          .attr("x", width - 24)
+          .attr("y", 9)
+          .attr("dy", ".35em")
+          .style("text-anchor", "end")
+          .text(function (d) { return d; });
 
         function brushed() {
           if (!d3.event.sourceEvent) return; // Only transition after input.
@@ -496,7 +569,7 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
       }
 
       //viz 5
-      showViz5();
+
 
       function showViz5() {
         // set the dimensions and margins of the graph
@@ -549,7 +622,21 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         for (let i = 0; i < keys.length; i++) {
           bar_data.push({ key: keys[i], value: arr[i] });
         }
-        console.log(bar_data);
+        svg.append("text")
+          .style("text-anchor", "end")
+          .attr("x", width)
+          .attr("y", height + 50)
+          .text("Month");
+
+        // y axis
+
+
+        svg.append("text")
+          .attr("transform", "rotate(0)")
+          .attr("y", -30)
+          .attr("dy", "1em")
+          .style("text-anchor", "end")
+          .text("Number of reviews");
         // Bars
         svg3.selectAll(".bar")
           .data(bar_data)
@@ -563,7 +650,7 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
       }
 
       //viz 6
-      showViz6();
+
 
       function showViz6() {
         // set the dimensions and margins of the graph
@@ -614,6 +701,24 @@ d3.csv('js/data/CDs_And_Vinyl.csv', function (data) {
         svg.append("g")
           .call(d3.axisLeft(y));
 
+        // x axis
+
+
+        svg.append("text")
+          .style("text-anchor", "end")
+          .attr("x", width)
+          .attr("y", height + 50)
+          .text("Month");
+
+        // y axis
+
+
+        svg.append("text")
+          .attr("transform", "rotate(0)")
+          .attr("y", -30)
+          .attr("dy", "1em")
+          .style("text-anchor", "end")
+          .text("Number of reviews");
         // append the bar rectangles to the svg element
         svg.selectAll("rect")
           .data(bins)

@@ -14,26 +14,37 @@
 
   <div class="container">
 
-    <h2>Price vs Number of Reviews by category</h2>
 
     <!-- Create a div where the circle will take place -->
-    <div id="dataviz_axisZoom" style="background-color:whitesmoke"></div>
     <div id="viz2">
-      <label>Category: </label><select id="viz2_select_category" style="width: mx-auto"></select>
+      <h3>Please choose a category: </h3>
+      <h4><select id="viz2_select_category" style="width: mx-auto"></select></h4>
       <!-- <label>Year: </label><select id="viz2_select_year" style="width: mx-auto"></select> -->
     </div>
-
-    <h2>Are there peak seasons during the year when this product gets reviewed?</h2>
-    <div id="viz3"></div>
-
-    <h2>Are there peak times during the day when this product gets reviewed?</h2>
-    <div id="viz6"></div>
+    <h2>Price vs Number of Reviews by category</h2>
+    <h5>This visualization is interactive. Click and pan to see a magnified image. Double click to reset.Hover over individual marks to see 
+      details. </h5>
+    <div id="dataviz_axisZoom" style="background-color:whitesmoke"></div>
+    
 
     <h2>Breakdown of reviews</h2>
+    <h5>Please choose a product from the visualization above to see how its reviews are distributed. <br/>
+      This visualization is interactive. Hover over individual marks to see 
+      details. Click and resize the bar below the visualization to see a magnified version of your selection.</h5>
     <div id="viz4"></div>
 
-    <h2>When do people write reviews mostly during a week?</h2>
+    <h2>Are there peak seasons during the year when this product gets reviewed?</h2>
+    <h5>Please choose a product from the first visualization to see if there is a trend. </h5>
+    <div id="viz3"></div>
+
+    <h2>Distribution of the time of day when people review products</h2>
+    <div id="viz6"></div>
+    <p>X axis represents the hour of day in 24-hour format. Y axis represents the number of reviews.</p>
+
+    <h2>Distribution of when people review products during the week</h2>
     <div id="viz5"></div>
+    <p>X axis represents the day of week. Y axis represents the number of reviews.</p>
+
     
 
   </div><!-- container -->
